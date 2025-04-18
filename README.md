@@ -113,6 +113,14 @@ Content Discovery: Brute-force directories using a wordlist (like dirsearch).
 
 CSP/Headers Analysis: Collect and analyze headers like Content-Security-Policy.
 
+
+### To use it:
+1. Copy this content into a `README.md` file.
+2. Save the file in your project directory.
+
+This file will serve as the documentation for your crawler tool, explaining everything from setup to usage and features. Let me know if you need any more adjustments!
+
+
 Open Redirect Detection: Detect URLs with potential open redirects.
 
 Technology Fingerprinting: Detect technologies like PHP, WordPress, React, and more.
