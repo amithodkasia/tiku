@@ -1,0 +1,103 @@
+Tiku Web Crawler Tool: Overview and Features
+Tiku is an advanced Python-based web crawler designed for reconnaissance, security testing, and vulnerability scanning. It is equipped with various features to help security professionals, penetration testers, and bug bounty hunters gather detailed information about a website or web application. Below is an explanation of the tool and the tasks you can perform with it.
+
+Key Features of Tiku
+Crawl Depth Control
+
+You can control how deep the crawler goes into the website. By adjusting the crawl depth, you limit the number of links the tool follows, which is useful for targeting specific sections of a website without overloading the tool or going too deep into less relevant pages.
+
+JS File Extraction
+
+The tool can detect and extract all JavaScript files linked within a web page. This is particularly useful because many modern websites load content dynamically via JavaScript, so extracting these files can help you discover hidden endpoints and other dynamic content.
+
+Form Detection
+
+Tiku identifies and extracts forms on web pages. This includes form details such as the action URL (where the form submits data), the HTTP method (GET or POST), and any other attributes that could be relevant for security testing, such as input types and hidden fields.
+
+Subdomain Crawling
+
+The tool can identify subdomains related to the target domain by scanning the web page for links to other subdomains. This is helpful for expanding the scope of testing, as subdomains often have different security configurations and content.
+
+Wayback Machine URLs Fetch
+
+Tiku can fetch archived URLs from the Wayback Machine (Internet Archive). This allows you to see older versions of a website that may have exposed different vulnerabilities or content.
+
+Gau URLs Fetch
+
+It integrates with the Gau tool (Get all URLs) to fetch a list of URLs indexed by various online sources like gau and wayback. This gives you access to a larger set of URLs for the target domain, helping you find endpoints that might have been missed during normal crawling.
+
+Auth Header/Cookie Support
+
+Tiku supports custom authentication headers (like Authorization) and cookies, which are essential for accessing authenticated sections of websites during crawling. This is useful for crawling and testing sites with login forms or private APIs.
+
+Fast Async Crawling (aiohttp)
+
+The tool uses aiohttp, an asynchronous HTTP client, which allows it to crawl websites at a much faster rate than traditional synchronous crawlers. It allows you to send multiple requests in parallel, reducing the overall time spent crawling.
+
+BeautifulSoup/Regex-based HTML Parsing
+
+Tiku uses BeautifulSoup to parse HTML and extract relevant data like links, forms, and embedded scripts. It also uses regular expressions (Regex) to detect patterns such as endpoint URLs (e.g., /api/, /v1/, etc.) and potential vulnerabilities.
+
+Static + JS Endpoint Extraction
+
+The tool can extract endpoints from both static HTML content and JavaScript files. For JS-rendered pages, it uses requests_html to render JavaScript and extract dynamic content like API endpoints that aren’t present in the raw HTML.
+
+Endpoint Filtering (GF-style Filtering)
+
+Tiku applies GF-style filtering to categorize and filter the discovered endpoints based on potential security risks, such as SQL injection, cross-site scripting (XSS), Local File Inclusion (LFI), Server-Side Request Forgery (SSRF), and more. This helps you focus on high-risk endpoints.
+
+Vulnerability Scanning Integrations (e.g., Nuclei Templates)
+
+The tool can integrate with Nuclei templates to perform vulnerability scanning. By using predefined templates, Tiku can identify common vulnerabilities like XSS, SQL injection, and more, which makes it easier for security researchers to perform quick assessments.
+
+Advanced Technology Fingerprinting
+
+Tiku identifies the technologies used by a website, such as PHP, ASP.NET, WordPress, React, Angular, and more. This is useful for understanding the underlying stack of the target website, as each technology may have specific vulnerabilities.
+
+CSP/Headers Analysis
+
+The tool extracts and analyzes security-related HTTP headers such as Content-Security-Policy (CSP), X-Frame-Options, and X-Content-Type-Options. This information is useful for understanding the security posture of a web application and whether it implements protections against common attacks like clickjacking and content injection.
+
+JavaScript Endpoint Extraction
+
+It can extract potential API endpoints from JavaScript files (e.g., endpoints like /api/v1/, /admin/, etc.). This helps in discovering hidden endpoints that are dynamically generated or loaded via JavaScript.
+
+Screenshot Support
+
+Tiku can capture screenshots of web pages using tools like Pyppeteer or Selenium. This feature is useful for visual documentation during security assessments or bug bounties.
+
+Open Redirect Detection
+
+The tool can detect open redirect vulnerabilities. This type of vulnerability occurs when a URL parameter redirects the user to an external malicious site (e.g., ?redirect=https://evil.com). Open redirects can be exploited by attackers for phishing attacks.
+
+Content Discovery
+
+Tiku can perform brute-force URL discovery using a wordlist. This is similar to tools like dirsearch and helps in discovering hidden directories, files, and endpoints by guessing URL paths.
+
+Use Cases for Tiku
+Bug Bounty Hunting
+
+As a bug bounty hunter, you can use Tiku to automate the discovery of endpoints, forms, and subdomains on a target website. This helps you identify potential attack vectors for vulnerabilities like XSS, SQLi, and others.
+
+Penetration Testing
+
+During a penetration test, Tiku can assist in reconnaissance by gathering information about a website’s structure, technologies, and vulnerabilities. The tool helps penetration testers focus on specific areas, such as form submission points, API endpoints, and hidden directories.
+
+Web Application Security Audits
+
+Security auditors can use Tiku to analyze a website’s security headers, technologies, and response behavior. It can also detect common security misconfigurations and flaws, helping organizations improve their security posture.
+
+Subdomain Enumeration
+
+If you are performing subdomain enumeration, Tiku can automatically extract subdomains linked within the target domain and extend your crawl to subdomain URLs. This is essential for expanding your attack surface during security assessments.
+
+Vulnerability Scanning
+
+By integrating Nuclei templates with Tiku, you can scan the crawled URLs for known vulnerabilities, such as XSS, SSRF, and SQL injection, without needing to manually craft payloads or queries.
+
+Technology Fingerprinting
+
+Knowing the technologies used by a website is crucial for identifying known vulnerabilities associated with those technologies. Tiku helps you quickly detect technologies like PHP, React, WordPress, etc., and provides insights into the website’s tech stack.
+
+Conclusion
+Tiku is a versatile and powerful web crawler tool for security research, penetration testing, and bug bounty hunting. Its ability to extract both static and dynamic content, detect potential vulnerabilities, and gather critical information about a website’s structure and technologies makes it a must-have tool for security professionals.
