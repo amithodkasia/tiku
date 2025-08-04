@@ -26,10 +26,10 @@ async def fetch(session, url):
     try:
         async with session.get(url, timeout=10) as response:
             # Safely clean cookies with illegal names
-            if response.cookies:
-                for k in list(response.cookies.keys()):
-                    if not k.isalnum():
-                        del response.cookies[k]
+            # Disable cookies entirely (no parsing = no warning)
+async with session.get(url, timeout=10, cookies={}) as response:
+    return await response.text(), str(response.url), response
+
             return await response.text(), str(response.url), response
     except Exception:
         return None, url, None
