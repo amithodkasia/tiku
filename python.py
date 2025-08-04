@@ -25,9 +25,15 @@ headers = {
 async def fetch(session, url):
     try:
         async with session.get(url, timeout=10) as response:
+            # Remove illegal cookies before returning
+            if response.cookies:
+                for k in list(response.cookies.keys()):
+                    if k.startswith("@"):
+                        del response.cookies[k]
             return await response.text(), str(response.url), response
     except Exception:
         return None, url, None
+
 
 async def fetch_js_rendered(url):
     try:
