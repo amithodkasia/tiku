@@ -25,10 +25,10 @@ headers = {
 async def fetch(session, url):
     try:
         async with session.get(url, timeout=10) as response:
-            # Remove illegal cookies before returning
+            # Safely clean cookies with illegal names
             if response.cookies:
                 for k in list(response.cookies.keys()):
-                    if k.startswith("@"):
+                    if not k.isalnum():
                         del response.cookies[k]
             return await response.text(), str(response.url), response
     except Exception:
@@ -68,14 +68,15 @@ def extract_endpoints_from_js(js_content):
     return re.findall(r"/api/[\w/]+", js_content)
 
 def extract_headers(response):
-    if not response:
+    try:
+        headers = response.headers if response else {}
+        return {
+            "csp": headers.get("Content-Security-Policy"),
+            "x_frame": headers.get("X-Frame-Options"),
+            "x_content_type": headers.get("X-Content-Type-Options")
+        }
+    except Exception:
         return {}
-    headers = response.headers
-    return {
-        "csp": headers.get("Content-Security-Policy"),
-        "x_frame": headers.get("X-Frame-Options"),
-        "x_content_type": headers.get("X-Content-Type-Options")
-    }
 
 def extract_parameters(links):
     params = set()
@@ -101,6 +102,8 @@ async def crawl(start_url, max_depth):
             html, final_url, response = await fetch(session, url)
             if not html:
                 html = await fetch_js_rendered(url)
+                final_url = url
+                response = None
                 if not html:
                     continue
 
@@ -151,7 +154,7 @@ def save_output(filename, fmt):
         return
 
     if fmt == "json":
-        with open(filename, "w") as f:
+        with open(filename, "w", encoding="utf-8") as f:
             json.dump(crawled_data, f, indent=2)
     elif fmt == "csv":
         keys = crawled_data[0].keys()
