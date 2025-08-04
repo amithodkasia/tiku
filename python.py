@@ -4,9 +4,14 @@ import json
 import csv
 import re
 import tldextract
+import logging
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin, urlparse
+from collections import deque
 from playwright.async_api import async_playwright
+
+# Suppress Playwright warnings
+logging.getLogger("playwright").setLevel(logging.CRITICAL)
 
 visited_urls = set()
 crawled_data = []
@@ -15,24 +20,29 @@ headers = {
     "User-Agent": "Mozilla/5.0 (compatible; TikuCrawler/1.0)"
 }
 
+# ---------- Fetch Functions ----------
+
 async def fetch(session, url):
     try:
         async with session.get(url, timeout=10) as response:
-            return await response.text(), str(response.url)
-    except Exception as e:
-        return None, url
+            return await response.text(), str(response.url), response
+    except Exception:
+        return None, url, None
 
 async def fetch_js_rendered(url):
     try:
         async with async_playwright() as p:
-            browser = await p.chromium.launch()
-            page = await browser.new_page()
-            await page.goto(url, timeout=10000)
+            browser = await p.chromium.launch(headless=True)
+            context = await browser.new_context(ignore_https_errors=True)
+            page = await context.new_page()
+            await page.goto(url, timeout=15000)
             content = await page.content()
             await browser.close()
             return content
     except Exception:
         return None
+
+# ---------- Extraction Functions ----------
 
 def extract_links(soup, base_url):
     return [urljoin(base_url, tag.get("href")) for tag in soup.find_all("a", href=True)]
@@ -52,6 +62,8 @@ def extract_endpoints_from_js(js_content):
     return re.findall(r"/api/[\w/]+", js_content)
 
 def extract_headers(response):
+    if not response:
+        return {}
     headers = response.headers
     return {
         "csp": headers.get("Content-Security-Policy"),
@@ -69,57 +81,82 @@ def extract_parameters(links):
                 params.add(key)
     return list(params)
 
-async def crawl(url, depth):
-    if url in visited_urls or depth < 0:
-        return
+# ---------- Core Crawler ----------
 
-    visited_urls.add(url)
+async def crawl(start_url, max_depth):
+    queue = deque([(start_url, 0)])
     async with aiohttp.ClientSession(headers=headers) as session:
-        html, final_url = await fetch(session, url)
-        if not html:
-            return
+        while queue:
+            url, depth = queue.popleft()
+            if url in visited_urls or depth > max_depth:
+                continue
+            visited_urls.add(url)
 
-        soup = BeautifulSoup(html, "html.parser")
-        links = extract_links(soup, final_url)
-        js_files = extract_js_files(soup, final_url)
-        forms = extract_forms(soup)
-        subdomains = list(set([urlparse(link).netloc for link in links if tldextract.extract(link).domain == tldextract.extract(url).domain]))
+            html, final_url, response = await fetch(session, url)
+            if not html:
+                html = await fetch_js_rendered(url)
+                if not html:
+                    continue
 
-        js_endpoints = []
-        for js_url in js_files:
-            js_html, _ = await fetch(session, js_url)
-            if js_html:
-                js_endpoints.extend(extract_endpoints_from_js(js_html))
+            soup = BeautifulSoup(html, "html.parser")
+            links = extract_links(soup, final_url)
+            js_files = extract_js_files(soup, final_url)
+            forms = extract_forms(soup)
 
-        headers_info = extract_headers(session._response) if hasattr(session, '_response') else {}
-        parameters = extract_parameters(links)
+            subdomains = list(
+                set(
+                    urlparse(link).netloc
+                    for link in links
+                    if tldextract.extract(link).domain == tldextract.extract(url).domain
+                    and urlparse(link).netloc
+                )
+            )
 
-        crawled_data.append({
-            "url": final_url,
-            "links": links,
-            "js_files": js_files,
-            "forms": forms,
-            "subdomains": subdomains,
-            "js_endpoints": list(set(js_endpoints)),
-            "technologies": [],  # Add detection if needed
-            "headers": headers_info,
-            "parameters": parameters
-        })
+            js_endpoints = []
+            for js_url in js_files:
+                js_html, _, _ = await fetch(session, js_url)
+                if js_html:
+                    js_endpoints.extend(extract_endpoints_from_js(js_html))
 
-        for link in links:
-            await crawl(link, depth - 1)
+            headers_info = extract_headers(response)
+            parameters = extract_parameters(links)
+
+            crawled_data.append({
+                "url": final_url,
+                "links": links,
+                "js_files": js_files,
+                "forms": forms,
+                "subdomains": subdomains,
+                "js_endpoints": list(set(js_endpoints)),
+                "technologies": [],  # Placeholder for tech detection
+                "headers": headers_info,
+                "parameters": parameters
+            })
+
+            for link in links:
+                if link.startswith("http"):
+                    queue.append((link, depth + 1))
+
+# ---------- Output ----------
 
 def save_output(filename, fmt):
+    if not crawled_data:
+        print("No data crawled.")
+        return
+
     if fmt == "json":
         with open(filename, "w") as f:
             json.dump(crawled_data, f, indent=2)
     elif fmt == "csv":
         keys = crawled_data[0].keys()
-        with open(filename, "w", newline="") as f:
+        with open(filename, "w", newline="", encoding="utf-8") as f:
             writer = csv.DictWriter(f, fieldnames=keys)
             writer.writeheader()
             for row in crawled_data:
-                writer.writerow(row)
+                safe_row = {k: json.dumps(v) if isinstance(v, (list, dict)) else v for k, v in row.items()}
+                writer.writerow(safe_row)
+
+# ---------- CLI ----------
 
 if __name__ == "__main__":
     import argparse
@@ -127,10 +164,11 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-u", "--url", required=True, help="Target URL to crawl")
     parser.add_argument("-d", "--depth", type=int, default=1, help="Crawling depth")
-    parser.add_argument("--output", default="output.json", help="Output file")
+    parser.add_argument("--output", default="output.json", help="Output file name")
     parser.add_argument("--format", default="json", choices=["json", "csv"], help="Output format")
 
     args = parser.parse_args()
 
     asyncio.run(crawl(args.url, args.depth))
     save_output(args.output, args.format)
+    print(f"Crawling finished. Data saved to {args.output}")
